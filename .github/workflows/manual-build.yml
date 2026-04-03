@@ -15,11 +15,14 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22.15.0'
+          cache: 'npm'
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: requirements.txt
 
       - name: Set up Rust
         uses: actions-rs/toolchain@v1
@@ -28,17 +31,29 @@ jobs:
           profile: minimal
           override: true
 
+      - name: Cache Rust build artifacts
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
-      - name: Setup Python environment
-        run: npm run setup-python
-
-      - name: Install Python script dependencies
-        run: pip install tqdm
+      - name: Setup Python environment (CPU only)
+        shell: pwsh
+        run: |
+          python -m venv .venv
+          .\.venv\Scripts\python -m pip install --upgrade pip
+          .\.venv\Scripts\pip install -r requirements.txt tqdm
 
       - name: Build and package
-        run: npm run release
+        shell: pwsh
+        run: |
+          npm run update-version
+          npm run build-python
+          npm run vite-build
+          npm run tauri build
+          .\.venv\Scripts\python utils/zip.py --zip_name VRCT.zip
 
       - name: Upload artifact (VRCT zip)
         uses: actions/upload-artifact@v4
