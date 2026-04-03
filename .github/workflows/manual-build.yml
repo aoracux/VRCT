@@ -1,0 +1,51 @@
+name: Manual Build VRCT
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build And Upload Artifact
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.15.0'
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Setup Python environment
+        run: npm run setup-python
+
+      - name: Install Python script dependencies
+        run: pip install tqdm
+
+      - name: Build and package
+        run: npm run release-all
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: vrct-build-artifacts
+          if-no-files-found: error
+          path: |
+            ./VRCT.zip
+            ./VRCT_cuda.zip
+            ./src-tauri/target/release/bundle/nsis/*.exe
